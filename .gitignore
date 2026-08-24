@@ -1,0 +1,19 @@
+﻿# Objetos e binários
+*.o
+*.out
+*.exe
+/bin/
+/build/
+
+# Executáveis do projeto
+verificador
+benchmark
+
+# Resultados gerados
+resultados/graficos/*.png
+
+# Editores / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
