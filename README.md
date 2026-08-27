@@ -93,9 +93,9 @@ static inline uint64_t hash_mod(uint64_t k, uint64_t tam) {
 
 ### 4.3 Estático × dinâmico
 
-- **Estático:** o registro é um conjunto conhecido → dá para construir um hash quase perfeito
-  (colisões ≈ 0). *Stretch opcional:* hash perfeito mínimo, com colisão zero garantida no conjunto.
-- **Dinâmico:** novas homologações entram com o tempo → tabela crescível com **rehashing** ao
+- **Estático:** o registro é um conjunto conhecido, ou seja, dá para construir um hash quase perfeito
+  (colisões ≈ 0).
+- **Dinâmico:** novas homologações entram com o tempo, ou seja, tabela crescível com **rehashing** ao
   ultrapassar o fator de carga. Medimos o custo de manter o desempenho conforme a base cresce.
 
 ## 5. Experimento
@@ -125,7 +125,7 @@ Saída: `resultados/colisoes.csv` + gráficos comparando baseline × Fibonacci.
 | Hash perfeito (estático) | O(1) | O(1) | ideal — colisão zero no conjunto conhecido |
 
 Referências para a discussão (por que não usamos): busca binária exige vetor ordenado e dá
-O(log n); interpolação chega a O(log log n) só em dados uniformes — que a Anatel não é.
+O(log n); interpolação chega a O(log log n) só em dados uniformes - que a Anatel não é.
 
 ## 7. Estrutura de pastas
 
