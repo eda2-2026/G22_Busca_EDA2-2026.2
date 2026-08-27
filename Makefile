@@ -16,29 +16,42 @@ else
   RMBIN  = rm -rf $(BIN)
 endif
 
-TEST := $(BIN)/homolog_test$(EXE)
-CLI  := $(BIN)/homolog_cli$(EXE)
+TEST  := $(BIN)/homolog_test$(EXE)
+TTEST := $(BIN)/tabela_test$(EXE)
+CLI   := $(BIN)/homolog_cli$(EXE)
+VER   := $(BIN)/verificador$(EXE)
 
-.PHONY: all test cli gerador clean
+.PHONY: all test cli verificar gerador clean
 
-# Alvo padrao: compila e roda a bateria de testes automaticos.
+# Alvo padrao: compila e roda TODOS os testes automaticos.
 all: test
 
-# --- Modulo homolog (parse/format) + testes automaticos ---
+# ---- Testes automaticos ----
 $(TEST): $(SRC)/homolog_test.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $(SRC)/homolog_test.c $(SRC)/homolog.c
 
-test: $(TEST)
-	$(call RUN,$(TEST))
+$(TTEST): $(SRC)/tabela_test.c $(SRC)/tabela.c $(SRC)/hash.c $(SRC)/homolog.c $(SRC)/tabela.h $(SRC)/hash.h $(SRC)/homolog.h | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $(SRC)/tabela_test.c $(SRC)/tabela.c $(SRC)/hash.c $(SRC)/homolog.c
 
-# --- CLI para teste MANUAL do parse (interativo ou por argumentos) ---
+test: $(TEST) $(TTEST)
+	$(call RUN,$(TEST))
+	$(call RUN,$(TTEST))
+
+# ---- Verificador GENUINO/FALSO (parse + tabela estatica + hash baseline) ----
+$(VER): $(SRC)/verificador.c $(SRC)/tabela.c $(SRC)/hash.c $(SRC)/homolog.c $(SRC)/tabela.h $(SRC)/hash.h $(SRC)/homolog.h | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $(SRC)/verificador.c $(SRC)/tabela.c $(SRC)/hash.c $(SRC)/homolog.c
+
+verificar: $(VER)
+	$(call RUN,$(VER))
+
+# ---- CLI de teste manual do parse ----
 $(CLI): $(SRC)/homolog_cli.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $(SRC)/homolog_cli.c $(SRC)/homolog.c
 
 cli: $(CLI)
 	$(call RUN,$(CLI))
 
-# --- Gerador (modulo do Esdras): sem main proprio ainda ---
+# ---- Gerador (modulo do Esdras): sem main proprio ainda ----
 gerador: $(SRC)/gerador.c $(SRC)/gerador.h $(SRC)/homolog.h | $(BIN)
 	$(CC) $(CFLAGS) -c $(SRC)/gerador.c -o $(BIN)/gerador.o
 
