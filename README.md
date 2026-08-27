@@ -10,29 +10,19 @@
 
 ## 1. Problema
 
-Aparelhos de telecomunicação vendidos no Brasil precisam ser homologados pela Anatel, e cada
-um recebe um **número de homologação** de 12 dígitos no formato `HHHHH-AA-FFFFF`:
+Aparelhos de telecomunicação vendidos no Brasil precisam ser homologados pela Anatel, e cada um recebe um **número de homologação** de 12 dígitos no formato `HHHHH-AA-FFFFF`:
 
-- `HHHHH` — número sequencial do produto no cadastro (5 dígitos);
-- `AA` — ano da homologação (2 dígitos);
-- `FFFFF` — identificação do fabricante (5 dígitos).
+- `HHHHH` - número sequencial do produto no cadastro (5 dígitos);
+- `AA` - ano da homologação (2 dígitos);
+- `FFFFF` - identificação do fabricante (5 dígitos).
 
-Produtos falsificados ou importados irregularmente frequentemente exibem números de
-homologação inexistentes ou trocados. Verificar a autenticidade é, na prática, um problema de
-**busca**: dado um número, ele existe no registro oficial e seus metadados (marca, modelo,
-fabricante) batem?
+Produtos falsificados ou importados irregularmente frequentemente exibem números de homologação inexistentes ou trocados. Verificar a autenticidade é, na prática, um problema de **busca**: dado um número, ele existe no registro oficial e seus metadados (marca, modelo, fabricante) batem?
 
 ## 2. Objetivo e contribuição
 
-Construir um **verificador de homologação** que responde `GENUÍNO` / `FALSO` para um número
-informado, indexando o registro por uma **tabela hash**.
+Construir um **verificador de homologação** que responde `GENUÍNO` / `FALSO` para um número informado, indexando o registro por uma **tabela hash**.
 
-A contribuição do trabalho não é apenas usar hash, mas **projetar uma função de hash sob medida
-para o formato da Anatel** (`HHHHH-AA-FFFFF`), que minimiza colisões em relação a uma função
-genérica, e **comprovar esse ganho com um experimento**. Como o registro não segue uma
-distribuição uniforme — anos e fabricantes se repetem e o número sequencial é denso —, uma função
-ingênua concentra chaves em poucos buckets. Nosso índice explora a estrutura dos campos para
-espalhar melhor as chaves.
+A contribuição do trabalho não é apenas usar hash, mas **projetar uma função de hash sob medida para o formato da Anatel** (`HHHHH-AA-FFFFF`), que minimiza colisões em relação a uma função genérica, e **comprovar esse ganho com um experimento**. Como o registro não segue uma distribuição uniforme — anos e fabricantes se repetem e o número sequencial é denso, uma função ingênua concentra chaves em poucos buckets. Nosso índice explora a estrutura dos campos para espalhar melhor as chaves.
 
 ## 3. O que o software faz
 
@@ -51,19 +41,15 @@ Fluxo interno: (1) parse e validação de formato → (2) hash do número → (3
 
 ## 4. Núcleo técnico - a função de hash
 
-O número cabe num inteiro de 64 bits (`~10¹² < 2⁴⁰`). Comparamos duas funções sobre a mesma
-estratégia de resolução de colisão (encadeamento), para que a diferença medida seja **só da função**.
+O número cabe num inteiro de 64 bits (`~10¹² < 2⁴⁰`). Comparamos duas funções sobre a mesma estratégia de resolução de colisão (encadeamento), para que a diferença medida seja **só da função**.
 
 ### 4.1 Baseline: módulo simples
 
-`h(k) = k mod m`. Serve de ponto de comparação: por olhar sobretudo os dígitos baixos da chave,
-tende a deixar a estrutura dos dados (como o agrupamento por fabricante) se refletir nos buckets.
+`h(k) = k mod m`. Serve de ponto de comparação: por olhar sobretudo os dígitos baixos da chave, tende a deixar a estrutura dos dados (como o agrupamento por fabricante) se refletir nos buckets.
 
 ### 4.2 Melhorada: Fibonacci estruturado
 
-Combina os campos com primos distintos e aplica hashing multiplicativo de Fibonacci, que lê os
-**bits altos** do produto — dependentes de todos os bits da chave. Dissolve sequências e
-agrupamentos com 1 multiplicação + 1 shift.
+Combina os campos com primos distintos e aplica hashing multiplicativo de Fibonacci, que lê os **bits altos** do produto — dependentes de todos os bits da chave. Dissolve sequências e agrupamentos com 1 multiplicação + 1 shift.
 
 ```c
 #include <stdint.h>
@@ -93,10 +79,8 @@ static inline uint64_t hash_mod(uint64_t k, uint64_t tam) {
 
 ### 4.3 Estático × dinâmico
 
-- **Estático:** o registro é um conjunto conhecido, ou seja, dá para construir um hash quase perfeito
-  (colisões ≈ 0).
-- **Dinâmico:** novas homologações entram com o tempo, ou seja, tabela crescível com **rehashing** ao
-  ultrapassar o fator de carga. Medimos o custo de manter o desempenho conforme a base cresce.
+- **Estático:** o registro é um conjunto conhecido, ou seja, dá para construir um hash quase perfeito (colisões ≈ 0).
+- **Dinâmico:** novas homologações entram com o tempo, ou seja, tabela crescível com **rehashing** aoultrapassar o fator de carga. Medimos o custo de manter o desempenho conforme a base cresce.
 
 ## 5. Experimento
 
@@ -124,8 +108,7 @@ Saída: `resultados/colisoes.csv` + gráficos comparando baseline × Fibonacci.
 | Fibonacci estruturado | O(1) | O(n) | bom — difunde ano/fabricante/sequencial |
 | Hash perfeito (estático) | O(1) | O(1) | ideal — colisão zero no conjunto conhecido |
 
-Referências para a discussão (por que não usamos): busca binária exige vetor ordenado e dá
-O(log n); interpolação chega a O(log log n) só em dados uniformes - que a Anatel não é.
+Referências para a discussão (por que não usamos): busca binária exige vetor ordenado e dá O(log n); interpolação chega a O(log log n) só em dados uniformes - que a Anatel não é.
 
 ## 7. Estrutura de pastas
 
