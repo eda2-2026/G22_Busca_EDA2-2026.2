@@ -13,6 +13,7 @@
  *
  * Contrato comum: toda funcao devolve 0 em sucesso e -1 em erro
  * (arquivo nao pode ser aberto/escrito, parametro invalido etc.).
+ */
 
 /*
  * Gera "n" registros sinteticos com chaves uniformemente distribuidas
