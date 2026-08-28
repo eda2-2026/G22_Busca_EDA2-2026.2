@@ -20,8 +20,9 @@ TEST  := $(BIN)/homolog_test$(EXE)
 TTEST := $(BIN)/tabela_test$(EXE)
 CLI   := $(BIN)/homolog_cli$(EXE)
 VER   := $(BIN)/verificador$(EXE)
+IMP   := $(BIN)/importar$(EXE)
 
-.PHONY: all test cli verificar gerador clean
+.PHONY: all test cli verificar importar gerador clean
 
 # Alvo padrao: compila e roda TODOS os testes automaticos.
 all: test
@@ -43,6 +44,12 @@ $(VER): $(SRC)/verificador.c $(SRC)/tabela.c $(SRC)/hash.c $(SRC)/homolog.c $(SR
 
 verificar: $(VER)
 	$(call RUN,$(VER))
+
+# ---- Importador do dado real da Anatel (driver do gerador_importar_real) ----
+$(IMP): $(SRC)/importar.c $(SRC)/gerador.c $(SRC)/gerador.h $(SRC)/homolog.h | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $(SRC)/importar.c $(SRC)/gerador.c
+
+importar: $(IMP)
 
 # ---- CLI de teste manual do parse ----
 $(CLI): $(SRC)/homolog_cli.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)
