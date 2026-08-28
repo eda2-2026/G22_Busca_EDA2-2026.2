@@ -288,7 +288,12 @@ static char **gerador_carregar_validos(const char *caminho, size_t *out_n) {
     }
 
     char linha[256];
-    fgets(linha, sizeof linha, f); /* descarta cabecalho ("numero") */
+    /* descarta o cabecalho ("numero"); arquivo vazio => sem registros */
+    if (fgets(linha, sizeof linha, f) == NULL) {
+        fclose(f);
+        *out_n = 0;
+        return vet;
+    }
 
     while (fgets(linha, sizeof linha, f) != NULL) {
         linha[strcspn(linha, "\r\n")] = '\0';
