@@ -37,15 +37,25 @@ static char *str_duplicar(const char *s) {
     return copia;
 }
 
+/* rand() garante apenas ate RAND_MAX (32767 no MinGW; ~2 bilhoes no
+ * glibc). Para sortear uniformemente em intervalos maiores que 32767
+ * (seq e fab vao ate 99999), juntamos dois blocos de 15 bits, o que
+ * cobre o intervalo em qualquer plataforma. */
+static unsigned gerador_rand_ate(unsigned limite) {
+    unsigned long r = ((unsigned long)(rand() & 0x7FFF) << 15)
+                    | (unsigned long)(rand() & 0x7FFF);
+    return (unsigned)(r % limite);
+}
+
 /*
  * Sorteia um numero no formato HHHHH-AA-FFFFF, com cada campo uniforme
  * e independente. Extraida do commit 7 para ser reaproveitada tambem
  * pelo commit 9 (consultas falsas), sem mudar a interface publica.
  */
 static void gerador_numero_aleatorio(char *buf, size_t tam) {
-    unsigned seq = (unsigned)(rand() % GERADOR_SEQ_MAX);
-    unsigned ano = (unsigned)(rand() % GERADOR_ANO_MAX);
-    unsigned fab = (unsigned)(rand() % GERADOR_FAB_MAX);
+    unsigned seq = gerador_rand_ate(GERADOR_SEQ_MAX);
+    unsigned ano = gerador_rand_ate(GERADOR_ANO_MAX);
+    unsigned fab = gerador_rand_ate(GERADOR_FAB_MAX);
     snprintf(buf, tam, "%05u-%02u-%05u", seq, ano, fab);
 }
 
