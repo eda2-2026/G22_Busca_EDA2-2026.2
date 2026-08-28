@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include "gerador.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +11,31 @@
 
 /* "HHHHH-AA-FFFFF\0" = 5+1+2+1+5+1 = 15 bytes */
 #define GERADOR_NUMERO_LEN 15
+
+/* Substring case-insensitive portatil: o strcasestr do glibc nao existe
+ * no MinGW. Retorna 1 se "agulha" aparece em "palheiro", ignorando caixa. */
+static int str_contem_ci(const char *palheiro, const char *agulha) {
+    if (palheiro == NULL || agulha == NULL) return 0;
+    if (agulha[0] == '\0') return 1;
+    for (const char *base = palheiro; *base != '\0'; base++) {
+        size_t k = 0;
+        while (agulha[k] != '\0' &&
+               tolower((unsigned char)base[k]) == tolower((unsigned char)agulha[k])) {
+            k++;
+        }
+        if (agulha[k] == '\0') return 1;
+    }
+    return 0;
+}
+
+/* strdup portatil: nao e' declarado no MinGW sob -std=c11.
+ * Retorna NULL em falha de alocacao. */
+static char *str_duplicar(const char *s) {
+    size_t tam = strlen(s) + 1;
+    char *copia = malloc(tam);
+    if (copia != NULL) memcpy(copia, s, tam);
+    return copia;
+}
 
 /*
  * Sorteia um numero no formato HHHHH-AA-FFFFF, com cada campo uniforme
@@ -145,9 +169,9 @@ static int gerador_indice_coluna_numero(const char *cabecalho, char sep) {
         if (*p == sep || *p == '\0' || *p == '\n' || *p == '\r') {
             char terminou = (*p == '\0');
             *p = '\0';
-            if (strcasestr(inicio, "homolog") != NULL) {
+            if (str_contem_ci(inicio, "homolog")) {
                 if (reserva < 0) reserva = indice;
-                if (strcasestr(inicio, "data") == NULL) {
+                if (!str_contem_ci(inicio, "data")) {
                     return indice;
                 }
             }
@@ -266,7 +290,7 @@ static char **gerador_carregar_validos(const char *caminho, size_t *out_n) {
             if (novo == NULL) break; /* segue com o que deu pra carregar */
             vet = novo;
         }
-        vet[n] = strdup(linha);
+        vet[n] = str_duplicar(linha);
         if (vet[n] == NULL) break;
         n++;
     }
