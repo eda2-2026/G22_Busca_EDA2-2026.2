@@ -21,8 +21,9 @@ TTEST := $(BIN)/tabela_test$(EXE)
 CLI   := $(BIN)/homolog_cli$(EXE)
 VER   := $(BIN)/verificador$(EXE)
 IMP   := $(BIN)/importar$(EXE)
+PAIN  := $(BIN)/painel$(EXE)
 
-.PHONY: all test cli verificar importar gerador clean
+.PHONY: all test cli verificar importar painel gerador clean
 
 # Alvo padrao: compila e roda TODOS os testes automaticos.
 all: test
@@ -50,6 +51,13 @@ $(IMP): $(SRC)/importar.c $(SRC)/gerador.c $(SRC)/gerador.h $(SRC)/homolog.h | $
 	$(CC) $(CFLAGS) -o $@ $(SRC)/importar.c $(SRC)/gerador.c
 
 importar: $(IMP)
+
+# ---- Painel de resultados no terminal ----
+$(PAIN): $(SRC)/painel.c | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $(SRC)/painel.c
+
+painel: $(PAIN)
+	$(call RUN,$(PAIN))
 
 # ---- CLI de teste manual do parse ----
 $(CLI): $(SRC)/homolog_cli.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)
