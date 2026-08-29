@@ -193,6 +193,27 @@ static int gerador_indice_coluna_numero(const char *cabecalho, char sep) {
     return reserva;
 }
 
+/* Normaliza o numero de homologacao para HHHHH-AA-FFFFF. Aceita:
+ *   - ja no formato com tracos (copiado como esta);
+ *   - 12 digitos sem tracos (forma do CSV real da Anatel): insere os
+ *     tracos nas posicoes 5 e 7 -> HHHHH AA FFFFF.
+ * Retorna 1 e preenche "saida" (>= GERADOR_NUMERO_LEN bytes) em sucesso;
+ * 0 se a entrada nao casar com nenhuma das formas. */
+static int gerador_normalizar(const char *campo, char *saida) {
+    if (campo == NULL) return 0;
+    if (gerador_formato_valido(campo)) {
+        snprintf(saida, GERADOR_NUMERO_LEN, "%s", campo);
+        return 1;
+    }
+    size_t i = 0;
+    for (; campo[i] != '\0'; i++) {
+        if (i >= 12 || !isdigit((unsigned char)campo[i])) return 0;
+    }
+    if (i != 12) return 0;
+    snprintf(saida, GERADOR_NUMERO_LEN, "%.5s-%.2s-%.5s", campo, campo + 5, campo + 7);
+    return 1;
+}
+
 /*
  * Le a amostra bruta baixada do Portal de Dados Abertos e produz um
  * CSV no mesmo formato usado por gerador_sintetico (header "numero",
@@ -241,12 +262,13 @@ int gerador_importar_real(const char *caminho_entrada, const char *caminho_saida
         char *campo = gerador_campo_indice(linha, sep, idx_numero);
         if (campo != NULL) campo = gerador_aparar(campo);
 
-        if (!gerador_formato_valido(campo)) {
+        char numero[GERADOR_NUMERO_LEN];
+        if (!gerador_normalizar(campo, numero)) {
             descartados++;
             continue;
         }
 
-        fprintf(out, "%s\n", campo);
+        fprintf(out, "%s\n", numero);
         validos++;
     }
 
