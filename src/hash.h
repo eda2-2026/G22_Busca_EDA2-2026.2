@@ -1,31 +1,29 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include <stddef.h>
 #include <stdint.h>
 #include "homolog.h"
 
+/* Baseline ingenuo, para comparacao (commit 12, Anna). h(k) = k mod m. */
+uint64_t hash_mod(uint64_t chave, uint64_t tam);
+
 /*
- * Funcoes de hash para o numero de homologacao.
- *
- * BASELINE (este modulo): h(k) = k mod m, onde k e' a "chave numerica
- * ingenua" -- os tres campos concatenados como um unico inteiro. Quando
- * m e' potencia de 2, "mod m" enxerga apenas os BITS BAIXOS de k, que
- * sao dominados pelo fabricante (FFFFF). Como fabricantes se repetem no
- * registro real, as chaves se concentram em poucos buckets. Isso e' de
- * proposito: e' o "antes" contra o qual a versao melhorada e' medida.
- *
- * A versao MELHORADA (hash de Fibonacci sobre uma chave estruturada com
- * primos) tem a MESMA assinatura de FuncaoHash (ver tabela.h) e mora no
- * modulo do parceiro; as duas plugam na mesma TabelaHash. Trocar o hash
- * do experimento e', literalmente, trocar um ponteiro de funcao.
+ * Chave inteira consciente do tipo (commit 13, Esdras): separa e
+ * mistura os campos de Homolog com primos distintos, em vez de tratar
+ * o numero como uma unica sequencia de digitos. Isso evita que a
+ * estrutura do dado (sequencial denso, ano/fabricante repetidos) vaze
+ * direto pra chave.
  */
+uint64_t chave_estruturada(Homolog h);
 
-/* Chave numerica "ingenua": concatena os campos HHHHH AA FFFFF num unico
- * inteiro de 64 bits -> seq*10^7 + ano*10^5 + fab. */
-uint64_t chave_naive(Homolog h);
-
-/* Hash baseline: chave_naive(h) % m. Assume m > 0. */
-size_t hash_baseline(Homolog h, size_t m);
+/*
+ * Hash de Fibonacci / multiplicative-shift (commit 14, Esdras): lê os
+ * "m" bits altos de (chave * constante de Fibonacci de 64 bits), que
+ * dependem de TODOS os bits da chave de entrada — dissolve sequencias
+ * e agrupamentos que uma funcao ingenua deixaria passar.
+ * "m" e log2(tamanho da tabela), ou seja a tabela deve ter tamanho
+ * potencia de 2.
+ */
+uint64_t hash_fib(uint64_t chave, uint32_t m);
 
 #endif /* HASH_H */
