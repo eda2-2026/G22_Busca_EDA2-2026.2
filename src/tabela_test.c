@@ -1,68 +1,38 @@
-#include "homolog.h"
-#include "hash.h"
 #include "tabela.h"
 #include <stdio.h>
+#include <assert.h>
 
-/* Testes da tabela hash estatica usando o hash baseline. */
-
-static int total = 0, falhas = 0;
-
-static void checa(const char *rotulo, int cond) {
-    total++;
-    if (cond) {
-        printf("  [ok]     %s\n", rotulo);
-    } else {
-        falhas++;
-        printf("  [FALHOU] %s\n", rotulo);
-    }
-}
-
-static Homolog H(uint32_t seq, uint16_t ano, uint32_t fab) {
-    Homolog h = { seq, ano, fab };
-    return h;
-}
+#define CAPACIDADE_INICIAL 8u
+#define N_INSERCOES 500u
 
 int main(void) {
-    printf("== Testes da tabela hash estatica (hash baseline) ==\n\n");
+    Tabela *t = tabela_criar(CAPACIDADE_INICIAL);
+    assert(t != NULL);
 
-    TabelaHash *t = tabela_criar(16, hash_baseline);
-    checa("tabela_criar devolve nao-NULL", t != NULL);
-    checa("tabela_criar(0, ...) devolve NULL", tabela_criar(0, hash_baseline) == NULL);
-
-    Homolog a = H(3340, 19, 4952);
-    Homolog b = H(1, 1, 0);
-    Homolog c = H(1, 1, 16);   /* chave_naive difere de b por 16 -> colide em m=16 */
-    Homolog x = H(9, 9, 9);    /* nunca inserido */
-
-    checa("busca em tabela vazia -> false", tabela_buscar(t, a) == false);
-
-    tabela_inserir(t, a);
-    tabela_inserir(t, b);
-    tabela_inserir(t, c);
-
-    checa("busca de chave inserida (a) -> true", tabela_buscar(t, a) == true);
-    checa("busca de chave inserida (b) -> true", tabela_buscar(t, b) == true);
-    checa("busca de chave inserida (c) -> true", tabela_buscar(t, c) == true);
-    checa("busca de chave ausente (x) -> false", tabela_buscar(t, x) == false);
-
-    EstatisticasTabela e = tabela_estatisticas(t);
-    checa("n == 3", e.n == 3);
-    checa("b e c colidiram: maior_bucket >= 2", e.maior_bucket >= 2);
-    checa("colisoes >= 1", e.colisoes >= 1);
-    checa("fator de carga ~ 3/16", e.fator_carga > 0.18 && e.fator_carga < 0.19);
-
-    /* duplicata exata nao quebra a busca */
-    tabela_inserir(t, a);
-    checa("apos duplicata, busca(a) ainda true", tabela_buscar(t, a) == true);
-    checa("n incrementa para 4", tabela_estatisticas(t).n == 4);
-
-    tabela_destruir(t);
-
-    printf("\n== Resumo: %d/%d passaram ==\n", total - falhas, total);
-    if (falhas > 0) {
-        printf("RESULTADO: FALHOU (%d com erro)\n", falhas);
-        return 1;
+    for (unsigned i = 0; i < N_INSERCOES; i++) {
+        Homolog h = { .seq = i, .ano = (uint16_t)(i % 30), .fab = i * 7 };
+        bool ok = tabela_inserir(t, h);
+        assert(ok);
     }
-    printf("RESULTADO: SUCESSO (todos os testes passaram)\n");
+
+    printf("capacidade final: %zu (inicial era %u)\n", t->capacidade, CAPACIDADE_INICIAL);
+    printf("total inserido: %zu\n", t->total);
+    printf("fator de carga final: %.3f\n", tabela_fator_carga(t));
+    assert(t->capacidade > CAPACIDADE_INICIAL); /* cresceu pelo menos uma vez */
+    assert(t->total == N_INSERCOES);
+
+    size_t achados = 0;
+    for (unsigned i = 0; i < N_INSERCOES; i++) {
+        Homolog h = { .seq = i, .ano = (uint16_t)(i % 30), .fab = i * 7 };
+        if (tabela_buscar(t, h)) achados++;
+    }
+    printf("achados apos rehash: %zu / %u\n", achados, N_INSERCOES);
+    assert(achados == N_INSERCOES);
+
+    Homolog inexistente = { .seq = 999999, .ano = 99, .fab = 999999 };
+    assert(!tabela_buscar(t, inexistente));
+
+    tabela_liberar(t);
+    printf("OK: rehashing preservou todos os elementos.\n");
     return 0;
 }
