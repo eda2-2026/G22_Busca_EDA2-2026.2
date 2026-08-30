@@ -5,65 +5,45 @@
 #include <stdbool.h>
 #include "homolog.h"
 
-/*
- * Tabela hash ESTATICA por encadeamento separado (separate chaining).
- *
- * "Estatica" no sentido do item 1.5 da ementa: o numero de buckets (m)
- * e' fixado na criacao e nao cresce. Como o conjunto de chaves e'
- * conhecido, da' pra dimensionar m e chegar a pouquissimas (ou zero)
- * colisoes com um bom hash. A versao DINAMICA (rehashing ao passar do
- * fator de carga) fica a cargo do outro modulo.
- *
- * A funcao de hash e' um PARAMETRO: a mesma tabela recebe tanto o hash
- * baseline (hash.h) quanto o de Fibonacci. E' isso que torna o
- * experimento "baseline x Fibonacci" uma troca de ponteiro, medindo as
- * duas na mesma estrutura.
- */
 
-/* Uma funcao de hash mapeia uma chave para um indice em [0, m). */
-typedef size_t (*FuncaoHash)(Homolog chave, size_t m);
-
-/* No da lista encadeada de um bucket. */
 typedef struct No {
-    Homolog      chave;
-    struct No   *prox;
+    Homolog dado;
+    struct No *prox;
 } No;
 
 typedef struct {
-    No       **buckets;  /* vetor de m listas encadeadas */
-    size_t     m;        /* numero de buckets            */
-    size_t     n;        /* numero de chaves inseridas   */
-    FuncaoHash hash;     /* funcao de hash em uso        */
-} TabelaHash;
+    No **buckets;
+    size_t capacidade;      /* numero de buckets — precisa ser potencia de 2 (hash_fib usa m = log2) */
+    size_t total;           /* numero de elementos inseridos */
+    unsigned long colisoes; /* insercoes que cairam num bucket ja ocupado */
+} Tabela;
 
-/* Estatisticas de ocupacao -- alimentam os graficos do experimento. */
-typedef struct {
-    size_t m;
-    size_t n;
-    double fator_carga;      /* n / m                                    */
-    size_t buckets_ocupados;
-    size_t buckets_vazios;
-    size_t maior_bucket;     /* pior caso de busca (comprimento maximo)  */
-    size_t colisoes;         /* n - buckets_ocupados                     */
-    double variancia;        /* variancia do comprimento dos buckets     */
-} EstatisticasTabela;
+Tabela *tabela_criar(size_t capacidade);
+bool tabela_inserir(Tabela *t, Homolog h);
+bool tabela_buscar(const Tabela *t, Homolog h);
+void tabela_liberar(Tabela *t);
 
-/* Cria uma tabela com m buckets e a funcao de hash dada.
- * Retorna NULL em falha de alocacao ou parametro invalido. */
-TabelaHash *tabela_criar(size_t m, FuncaoHash hash);
 
-/* Libera toda a memoria da tabela (inclusive as listas). */
-void tabela_destruir(TabelaHash *t);
+/* Fator de carga atual: total de elementos / numero de buckets. */
+double tabela_fator_carga(const Tabela *t);
 
-/* Insere uma chave (nao remove duplicatas: o registro e' um conjunto e
- * duplicatas exatas nao mudam a resposta da busca). Retorna 0 em
- * sucesso, -1 em falha de alocacao. */
-int tabela_inserir(TabelaHash *t, Homolog chave);
+/* Verdadeiro quando o fator de carga passou de "limite" e a tabela
+ * deveria crescer antes da proxima insercao. */
+bool tabela_deve_crescer(const Tabela *t, double limite);
 
-/* Busca uma chave. Retorna true se existe (=> GENUINO). */
-bool tabela_buscar(const TabelaHash *t, Homolog chave);
+/* Limite padrao de fator de carga usado por tabela_inserir para
+ * disparar o rehashing automatico (commit 19). */
+#define TABELA_FATOR_CARGA_LIMITE 0.75
 
-/* Calcula as estatisticas de ocupacao da tabela. */
-EstatisticasTabela tabela_estatisticas(const TabelaHash *t);
+
+
+/*
+ * Realoca o array de buckets para "nova_capacidade" (deve ser
+ * potencia de 2) e reinsere todos os elementos existentes, recalculando
+ * o indice de cada um para o novo tamanho. Os nos existentes sao
+ * reaproveitados (relinkados), nao recriados. Retorna false em falha
+ * de alocacao (tabela fica inalterada nesse caso).
+ */
+bool tabela_rehash(Tabela *t, size_t nova_capacidade);
 
 #endif /* TABELA_H */
