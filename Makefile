@@ -22,8 +22,9 @@ CLI   := $(BIN)/homolog_cli$(EXE)
 VER   := $(BIN)/verificador$(EXE)
 IMP   := $(BIN)/importar$(EXE)
 PAIN  := $(BIN)/painel$(EXE)
+BENCH := $(BIN)/benchmark$(EXE)
 
-.PHONY: all test cli verificar importar painel gerador clean
+.PHONY: all test cli verificar importar painel benchmark gerador clean
 
 # Alvo padrao: compila e roda TODOS os testes automaticos.
 all: test
@@ -58,6 +59,13 @@ $(PAIN): $(SRC)/painel.c | $(BIN)
 
 painel: $(PAIN)
 	$(call RUN,$(PAIN))
+
+# ---- Benchmark do experimento (baseline x Fibonacci) ----
+$(BENCH): $(SRC)/benchmark.c $(SRC)/hash.c $(SRC)/homolog.c $(SRC)/hash.h $(SRC)/homolog.h | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $(SRC)/benchmark.c $(SRC)/hash.c $(SRC)/homolog.c
+
+benchmark: $(BENCH)
+	$(call RUN,$(BENCH))
 
 # ---- CLI de teste manual do parse ----
 $(CLI): $(SRC)/homolog_cli.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)
