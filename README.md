@@ -65,21 +65,19 @@ $ ./verificador --csv dados/registro_real.csv 03340-19-04952 99999-99-99999 abcd
   "abcde-19-04952"  ->  INVALIDO  (fora do formato HHHHH-AA-FFFFF)
 ```
 
-Três respostas: **GENUÍNO** (bem formado e presente no registro), **FALSO** (bem formado, mas ausente) e **INVÁLIDO** (nem está no formato). Há também um modo interativo (rodar sem números digita à mão; sem `--csv`, usa um registro de demonstração embutido).
+Três respostas: **GENUÍNO** (bem formado e presente no registro), **FALSO** (bem formado, mas ausente) e **INVÁLIDO** (nem está no formato).
 
-Fluxo interno: (1) parse e validação de formato → (2) hash do número → (3) busca no bucket → (4) resposta. (Exibir metadados como fabricante/ano é uma extensão natural, ainda não implementada.)
+Fluxo interno: (1) parse e validação de formato → (2) hash do número → (3) busca no bucket → (4) resposta.
 
 ## 4. Objetivo e contribuição
 
 Construir um **verificador de homologação** que responde `GENUÍNO` / `FALSO` para um número informado, indexando o registro por uma **tabela hash**.
 
-A contribuição do trabalho não é apenas usar hash, mas **projetar uma função de hash sob medida para o formato da Anatel** (`HHHHH-AA-FFFFF`), que minimiza colisões em relação a uma função genérica, e **comprovar esse ganho com um experimento**. Como o registro não segue uma distribuição uniforme — anos e fabricantes se repetem e o número sequencial é denso, uma função ingênua concentra chaves em poucos buckets. Nosso índice explora a estrutura dos campos para espalhar melhor as chaves.
+A contribuição do trabalho é **projetar uma função de hash sob medida para o formato da Anatel** (`HHHHH-AA-FFFFF`), que minimiza colisões em relação a uma função genérica, e **comprovar esse ganho com um experimento**. Como o registro não segue uma distribuição uniforme — anos e fabricantes se repetem e o número sequencial é denso, uma função ingênua concentra chaves em poucos buckets. Nosso índice explora a estrutura dos campos para espalhar melhor as chaves.
 
 ## 5. Núcleo técnico - a função de hash
 
 O número cabe num inteiro de 64 bits (`~10¹² < 2⁴⁰`). Comparamos duas funções sobre a mesma estratégia de resolução de colisão (encadeamento), para que a diferença medida seja **só da função**.
-
-> **Status:** o baseline (5.1) está implementado e medido (Seção 7). A função de Fibonacci (5.2) e a tabela dinâmica (5.3) estão em implementação e plugam na mesma tabela.
 
 ### 5.1 Baseline: módulo simples
 
@@ -128,7 +126,7 @@ Datasets do mesmo tamanho:
 - **sintético uniforme** - grupo de controle, para mostrar o teto de qualidade;
 - **consultas falsas** - números inexistentes, gerados contra o próprio registro real (pior caso: confirmar ausência).
 
-Tamanhos: **10k / 100k / 189k** (a base real completa tem 189.317 números). Métricas medidas para cada função:
+Tamanhos: **10k / 50k / 87k** (a base real, depois de deduplicada, tem 87.263 números distintos). Métricas medidas para cada função:
 
 - número total de **colisões**;
 - **maior bucket** e **variância** do tamanho dos buckets (o quanto agrupa);
@@ -138,26 +136,32 @@ Tamanhos: **10k / 100k / 189k** (a base real completa tem 189.317 números). Mé
 
 Saída: `resultados/colisoes.csv` + gráficos comparando baseline × Fibonacci.
 
-## 7. Resultados (parciais)
+## 7. Resultados
 
-Baseline implementado: chave inteira por concatenação dos campos (`chave_naive`) e `h(k) = k mod m`, com `m` potência de 2 e resolução por encadeamento. Comparação no **dado real da Anatel** contra o **sintético uniforme** de mesmo tamanho e mesma tabela:
+Medimos duas funções de hash — **baseline** (`k mod m` sobre o número bruto) e **Fibonacci** (chave estruturada + multiplicative-shift) — na mesma tabela (potência de 2, fator de carga ~0,7), em dois cenários: o **registro real** da Anatel e um **adversário** construído de propósito (poucos anos/fabricantes, sequencial denso — o pior caso da função ingênua).
 
-| tamanho | dataset | colisões | maior bucket |
+### 7.1 Um achado no caminho: duplicatas
+
+O CSV bruto da Anatel tem **189.317 linhas, mas só 87.263 números distintos** — o mesmo número de homologação aparece em várias linhas (é um log de certificações, não um registro limpo). Como número repetido colide em qualquer hash, as duplicatas dominavam a medição. Por isso o importador **deduplica** (o registro é um conjunto): o experimento roda sobre os 87.263 distintos.
+
+### 7.2 Baseline × Fibonacci
+
+| cenário | função | colisões | maior bucket |
 | --- | --- | ---: | ---: |
-| 10 mil | real | 3.581 | 19 |
-| 10 mil | uniforme | 2.526 | 5 |
-| 100 mil | real | 50.673 | 240 |
-| 100 mil | uniforme | 16.849 | 7 |
-| 189 mil (full) | real | **109.211** | **401** |
-| 189 mil (full) | uniforme | 30.473 | 5 |
+| real (87k) | baseline | 24.360 | 8 |
+| real (87k) | Fibonacci | 23.395 | 7 |
+| adversário (87k) | baseline | **82.143** | 18 |
+| adversário (87k) | Fibonacci | 23.516 | 8 |
 
-![Baseline: dado real da Anatel × sintético uniforme](resultados/graficos/baseline_real_vs_uniforme.png)
+![baseline × Fibonacci](resultados/graficos/baseline_vs_fibonacci.png)
 
-**Leitura:** com a mesma tabela e o mesmo fator de carga (~0,36), mudando só a natureza do dado, o baseline no dado real colide ~3,6× mais e o **maior bucket chega a 401** — contra 5 no uniforme. Um número que caia nesse bucket de 401 faz a busca varrer 401 nós encadeados: é o pior caso O(n) se manifestando. E o efeito **piora com a escala** (maior bucket 19 → 240 → 401), confirmando que o registro real agrupa (anos e fabricantes se repetem) e que o `k mod m` deixa essa estrutura vazar para poucos buckets. É exatamente o problema que a função de Fibonacci (Seção 5.2) vem atacar.
+**Leitura (honesta):** no **dado real limpo**, baseline e Fibonacci **empatam** — os números de homologação da Anatel *não* têm o agrupamento de baixo nível que a proposta imaginava; o `k mod 2^m` já espalha quase idealmente (os dois ficam perto do hashing aleatório ideal). O ganho do Fibonacci **só aparece quando o dado realmente agrupa**: no cenário adversário o baseline colapsa (usa ~4% dos buckets, 82.143 colisões) e o Fibonacci se mantém perto do ideal (23.516) — ~3,5× menos colisões.
 
-Os dados brutos estão em `resultados/colisoes.csv` (esquema `funcao,dataset,n,m,fator_carga,colisoes,maior_bucket`) e o gráfico é gerado por `resultados/gerar_graficos.py`. Quando o benchmark do hash de Fibonacci rodar, ele acrescenta linhas `funcao=fibonacci` ao mesmo CSV e o gráfico ganha as barras comparativas — sem retrabalho.
+### 7.3 Conclusão
 
-> O registro real vem do [Portal de Dados Abertos](https://dados.gov.br/dados/conjuntos-dados/produtos-de-telecomunicacoes-homologados-pela-anatel) (189.317 produtos homologados). No arquivo bruto o número vem como 12 dígitos sem traços; o importador (`gerador_importar_real` + `bin/importar`) reconstrói o formato `HHHHH-AA-FFFFF`.
+Escolhemos o **Fibonacci** não porque o dado real exija, mas pela **robustez**: ele iguala o baseline no caso fácil e o supera com folga no pior caso, ao custo de uma multiplicação e um shift. E há um resultado metodológico que vale registrar: *medir* revelou que a hipótese inicial (o dado real agruparia) estava errada, e que a maior fonte de colisões era a duplicação — corrigida na deduplicação.
+
+Os números vêm de `resultados/colisoes.csv` (gerado por `make benchmark`); o gráfico, de `resultados/gerar_graficos.py`; e há um resumo colorido no terminal em `make painel`.
 
 ## 8. Análise de complexidade
 
@@ -177,40 +181,39 @@ G22_Busca_EDA2-2026.2/
 ├── Makefile                       # cross-platform (make / mingw32-make)
 ├── .gitattributes                 # normaliza fim de linha (LF)
 ├── dados/
-│   ├── registro_real.csv          # 189.317 homologacoes reais (Anatel)
+│   ├── registro_real.csv          # 87.263 numeros distintos (deduplicado)
 │   ├── registro_sintetico_pequeno.csv   # amostra uniforme (controle)
 │   └── consultas_falsas_pequeno.csv     # amostra de numeros inexistentes
 ├── src/
 │   ├── homolog.h / homolog.c      # parse e formatacao do numero
 │   ├── homolog_test.c             # testes do parse
 │   ├── homolog_cli.c              # CLI de teste do parse
-│   ├── hash.h / hash.c            # chave_naive + hash_baseline (k mod m)
-│   ├── tabela.h / tabela.c        # tabela hash estatica (encadeamento) + estatisticas
+│   ├── hash.h / hash.c            # hash_mod (baseline) + chave_estruturada + hash_fib
+│   ├── hash_test.c               # compara hash_mod x hash_fib (amostra agrupada)
+│   ├── tabela.h / tabela.c        # tabela hash dinamica (encadeamento) + rehashing
 │   ├── tabela_test.c              # testes da tabela
 │   ├── verificador.c              # CLI: numero -> GENUINO/FALSO/INVALIDO
+│   ├── benchmark.c               # mede baseline x Fibonacci -> colisoes.csv
+│   ├── painel.c                  # painel de resultados no terminal
 │   ├── gerador.h / gerador.c      # datasets: sintetico, importacao real, consultas falsas
 │   └── importar.c                 # driver do importador do dado real
 ├── resultados/
 │   ├── colisoes.csv               # metricas medidas
 │   ├── gerar_graficos.py          # gera os graficos a partir do CSV
-│   └── graficos/                  # PNGs gerados
+│   └── graficos/                  # PNGs gerados (baseline_vs_fibonacci.png)
 └── docs/
 ```
-
-Ainda por integrar (Esdras): `hash_fib`, a tabela dinâmica com rehashing e o `benchmark.c` (tempo).
 
 ## 10. Status
 
 - [x] Parse e validação do número (`homolog`) + testes
-- [x] Tabela hash estática (encadeamento) + estatísticas + testes
-- [x] Hash baseline `k mod m`
+- [x] Tabela hash por encadeamento — dinâmica, com fator de carga e **rehashing** + testes
+- [x] Hash **baseline** (`k mod m`) e hash de **Fibonacci** estruturado + testes
 - [x] Verificador GENUÍNO / FALSO / INVÁLIDO
-- [x] Importação do dado real da Anatel (189.317 números)
-- [x] Gráficos do baseline (real × uniforme)
-- [ ] Hash de Fibonacci
-- [ ] Tabela dinâmica com rehashing
-- [ ] Benchmark de tempo + gráfico final baseline × Fibonacci
-- [ ] Vídeo (5 min)
+- [x] Importação e **deduplicação** do dado real da Anatel (87.263 distintos)
+- [x] Benchmark baseline × Fibonacci + gráfico + painel no terminal
+- [ ] Benchmark de **tempo** de busca (extensão)
+- [ ] Vídeo (5 min) e revisão final
 
 ## 11. Bibliografia
 
