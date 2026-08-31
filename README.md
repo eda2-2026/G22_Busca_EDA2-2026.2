@@ -20,37 +20,45 @@ Produtos falsificados ou importados irregularmente frequentemente exibem número
 
 ## 2. Como compilar e rodar
 
-> **Pré-requisitos:** `gcc` e `make` — nada além da biblioteca padrão de C. No **Windows com MinGW**, o comando é `mingw32-make` no lugar de `make`.
+> **Pré-requisitos:** `gcc` e `make` — nada além da biblioteca padrão de C. No **Windows com MinGW**, use `mingw32-make` no lugar de `make`.
 
-**Verificação rápida** (compila tudo e roda os testes automáticos):
+**Compilar tudo** (gera os executáveis em `bin/`):
 
 ```
-make test            # Linux / macOS
-mingw32-make test    # Windows (MinGW)
+make                 # Linux / macOS   (mingw32-make no Windows)
 ```
 
-Deve terminar com `RESULTADO: SUCESSO` nas duas baterias (parse + tabela).
+**Rodar os testes automáticos:**
+
+```
+make test            # -> "RESULTADO: SUCESSO" (parse) + "OK: rehashing..." (tabela)
+```
 
 **Alvos disponíveis:**
 
 | Alvo | O que faz |
 | --- | --- |
+| `make` | compila todos os binários em `bin/` |
 | `test` | compila e roda os testes automáticos (parse + tabela) |
 | `verificar` | verificador interativo (GENUÍNO / FALSO / INVÁLIDO) |
+| `benchmark` | mede baseline × Fibonacci e gera `resultados/colisoes.csv` |
+| `painel` | mostra o painel de resultados no terminal |
 | `cli` | CLI de teste do parser do número |
-| `importar` | driver de importação do dado real da Anatel |
+| `importar` | driver de importação do CSV bruto da Anatel |
 | `clean` | limpa a pasta `bin/` |
 
 **Exemplos de uso** (no Windows os executáveis têm sufixo `.exe`, ex.: `.\bin\verificador.exe`):
 
 ```
-# verificar numeros contra o registro real
-./bin/verificador --csv dados/registro_real.csv 03340-19-04952 99999-99-99999
+# ver o resumo do experimento (baseline x Fibonacci)
+make benchmark        # gera resultados/colisoes.csv
+make painel           # mostra a tabela e as barras no terminal
 
-# importar o CSV bruto da Anatel -> registro no formato do projeto
-./bin/importar dados/anatel_bruto.csv dados/registro_real.csv
+# verificar numeros contra o registro real (rode 'make' antes)
+./bin/verificador --csv dados/registro_real.csv 00003-11-06559 12345-99-00000
+#   00003-11-06559 -> GENUINO   |   12345-99-00000 -> FALSO
 
-# gerar os graficos a partir de resultados/colisoes.csv (requer matplotlib)
+# gerar o grafico do experimento (requer matplotlib)
 python resultados/gerar_graficos.py
 ```
 
