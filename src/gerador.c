@@ -4,16 +4,12 @@
 #include <string.h>
 #include <ctype.h>
 
-/* Limites de cada campo no formato HHHHH-AA-FFFFF (Secao 1 da proposta). */
-#define GERADOR_SEQ_MAX 100000u /* HHHHH: 00000-99999 (5 digitos) */
-#define GERADOR_ANO_MAX 100u    /* AA:    00-99       (2 digitos) */
-#define GERADOR_FAB_MAX 100000u /* FFFFF: 00000-99999 (5 digitos) */
+#define GERADOR_SEQ_MAX 100000u
+#define GERADOR_ANO_MAX 100u
+#define GERADOR_FAB_MAX 100000u
 
-/* "HHHHH-AA-FFFFF\0" = 5+1+2+1+5+1 = 15 bytes */
 #define GERADOR_NUMERO_LEN 15
 
-/* Substring case-insensitive portatil: o strcasestr do glibc nao existe
- * no MinGW. Retorna 1 se "agulha" aparece em "palheiro", ignorando caixa. */
 static int str_contem_ci(const char *palheiro, const char *agulha) {
     if (palheiro == NULL || agulha == NULL) return 0;
     if (agulha[0] == '\0') return 1;
@@ -28,8 +24,6 @@ static int str_contem_ci(const char *palheiro, const char *agulha) {
     return 0;
 }
 
-/* strdup portatil: nao e' declarado no MinGW sob -std=c11.
- * Retorna NULL em falha de alocacao. */
 static char *str_duplicar(const char *s) {
     size_t tam = strlen(s) + 1;
     char *copia = malloc(tam);
@@ -37,21 +31,12 @@ static char *str_duplicar(const char *s) {
     return copia;
 }
 
-/* rand() garante apenas ate RAND_MAX (32767 no MinGW; ~2 bilhoes no
- * glibc). Para sortear uniformemente em intervalos maiores que 32767
- * (seq e fab vao ate 99999), juntamos dois blocos de 15 bits, o que
- * cobre o intervalo em qualquer plataforma. */
 static unsigned gerador_rand_ate(unsigned limite) {
     unsigned long r = ((unsigned long)(rand() & 0x7FFF) << 15)
                     | (unsigned long)(rand() & 0x7FFF);
     return (unsigned)(r % limite);
 }
 
-/*
- * Sorteia um numero no formato HHHHH-AA-FFFFF, com cada campo uniforme
- * e independente. Extraida do commit 7 para ser reaproveitada tambem
- * pelo commit 9 (consultas falsas), sem mudar a interface publica.
- */
 static void gerador_numero_aleatorio(char *buf, size_t tam) {
     unsigned seq = gerador_rand_ate(GERADOR_SEQ_MAX);
     unsigned ano = gerador_rand_ate(GERADOR_ANO_MAX);
@@ -59,23 +44,6 @@ static void gerador_numero_aleatorio(char *buf, size_t tam) {
     snprintf(buf, tam, "%05u-%02u-%05u", seq, ano, fab);
 }
 
-/*
- * Grupo de controle: sorteia cada campo (seq/ano/fab) de forma
- * independente e uniforme dentro dos limites do formato. Ao contrario
- * do dado real, aqui nao ha agrupamento por ano/fabricante nem
- * sequencial denso, entao o "teto de qualidade" do experimento (Secao 5)
- * vem daqui.
- *
- * rand() nao e semeado propositalmente: sem srand() explicito em algum
- * ponto do programa (main de benchmark/verificador), a sequencia e
- * deterministica (seed = 1), o que mantem os experimentos reprodutiveis
- * entre execucoes. Se quiserem variar entre rodadas, chamem
- * srand(time(NULL)) antes, no chamador.
- *
- * Duplicatas exatas sao estatisticamente possiveis (espaco de chaves e
- * grande, mas finito) e nao invalidam o experimento: o que importa e a
- * distribuicao de colisoes na tabela hash, nao a unicidade da chave.
- */
 int gerador_sintetico(const char *caminho_saida, size_t n) {
     FILE *f = fopen(caminho_saida, "w");
     if (f == NULL) {
@@ -99,12 +67,6 @@ int gerador_sintetico(const char *caminho_saida, size_t n) {
     return 0;
 }
 
-/* Descobre o separador do CSV de origem. Dados publicos brasileiros
- * aparecem tanto com ';'/',' quanto com TAB (caso do export real da
- * Anatel) — conta as tres ocorrencias na linha de cabecalho e usa a
- * mais frequente, com tab tendo prioridade quando presente (separador
- * inequivoco, ao contrario de ';'/',' que podem aparecer dentro de
- * texto livre tambem). */
 static char gerador_detectar_separador(const char *linha) {
     int pv = 0, pc = 0, pt = 0;
     for (const char *p = linha; *p != '\0'; p++) {
@@ -116,11 +78,6 @@ static char gerador_detectar_separador(const char *linha) {
     return (pv >= pc) ? ';' : ',';
 }
 
-/* Retorna o campo de indice "indice" (0-based) da linha, terminando-o
- * com '\0' no lugar do separador (a linha e modificada). Tambem corta
- * '\r'/'\n' do fim. Nao trata separador dentro de aspas (limitacao
- * conhecida: se o CSV real vier com campos entre aspas contendo ';'
- * ou ',', ajustar aqui). Retorna NULL se a linha nao tiver esse indice. */
 static char *gerador_campo_indice(char *linha, char sep, int indice) {
     int atual = 0;
     char *inicio = linha;
@@ -139,7 +96,6 @@ static char *gerador_campo_indice(char *linha, char sep, int indice) {
     return (atual == indice) ? inicio : NULL;
 }
 
-/* Remove espacos, tabs e aspas das pontas do campo, em place. */
 static char *gerador_aparar(char *s) {
     while (*s == ' ' || *s == '\t' || *s == '"') s++;
     size_t len = strlen(s);
@@ -149,7 +105,6 @@ static char *gerador_aparar(char *s) {
     return s;
 }
 
-/* Confere se "s" esta exatamente no formato HHHHH-AA-FFFFF. */
 static int gerador_formato_valido(const char *s) {
     if (s == NULL) return 0;
     size_t i = 0;
@@ -161,13 +116,6 @@ static int gerador_formato_valido(const char *s) {
     return s[i] == '\0';
 }
 
-/* Acha, no cabecalho, a coluna do numero de homologacao. O export
- * real da Anatel tem DUAS colunas com "Homolog" no nome ("Data da
- * Homologação" e "Número de Homologação"), entao "contem homolog" nao
- * basta — preferimos a que NAO contem "data" (afasta "Data da
- * Homologação" e "Data de Validade do Certificado"). Se nenhuma
- * bater nesse criterio mais estrito, cai pro primeiro "homolog" como
- * ultimo recurso. Retorna o indice (0-based) ou -1 se nao achar nada. */
 static int gerador_indice_coluna_numero(const char *cabecalho, char sep) {
     char copia[4096];
     snprintf(copia, sizeof copia, "%s", cabecalho);
@@ -193,12 +141,6 @@ static int gerador_indice_coluna_numero(const char *cabecalho, char sep) {
     return reserva;
 }
 
-/* Normaliza o numero de homologacao para HHHHH-AA-FFFFF. Aceita:
- *   - ja no formato com tracos (copiado como esta);
- *   - 12 digitos sem tracos (forma do CSV real da Anatel): insere os
- *     tracos nas posicoes 5 e 7 -> HHHHH AA FFFFF.
- * Retorna 1 e preenche "saida" (>= GERADOR_NUMERO_LEN bytes) em sucesso;
- * 0 se a entrada nao casar com nenhuma das formas. */
 static int gerador_normalizar(const char *campo, char *saida) {
     if (campo == NULL) return 0;
     if (gerador_formato_valido(campo)) {
@@ -214,21 +156,8 @@ static int gerador_normalizar(const char *campo, char *saida) {
     return 1;
 }
 
-/* definida mais abaixo (usada tambem por consultas_falsas) */
 static int gerador_cmp_str(const void *a, const void *b);
 
-/*
- * Le a amostra bruta baixada do Portal de Dados Abertos e produz um
- * CSV no mesmo formato usado por gerador_sintetico (header "numero",
- * uma chave HHHHH-AA-FFFFF por linha), pronto pra ser lido junto com
- * o resto do pipeline.
- *
- * Como o nome exato da coluna de origem varia (e eu nao tive acesso
- * ao arquivo real da Anatel pra confirmar), a busca e por conteudo
- * ("contem 'homolog'", case-insensitive) em vez de indice fixo. Se o
- * arquivo de voces usar um nome que nao bate com isso, so ajustar a
- * string em gerador_indice_coluna_numero.
- */
 int gerador_importar_real(const char *caminho_entrada, const char *caminho_saida) {
     FILE *in = fopen(caminho_entrada, "r");
     if (in == NULL) {
@@ -260,9 +189,6 @@ int gerador_importar_real(const char *caminho_entrada, const char *caminho_saida
     }
     fprintf(out, "numero\n");
 
-    /* Coleta os numeros validos; o registro e um CONJUNTO, entao no fim
-     * ordenamos e escrevemos apenas os distintos (o CSV bruto da Anatel
-     * repete o mesmo numero em varias linhas — um log de certificacoes). */
     size_t cap = 1024, nv = 0, descartados = 0;
     char **vals = malloc(cap * sizeof *vals);
     if (vals == NULL) { fclose(in); fclose(out); return -1; }
@@ -310,10 +236,6 @@ static int gerador_cmp_str(const void *a, const void *b) {
     return strcmp(*pa, *pb);
 }
 
-/* Carrega a coluna "numero" de um CSV (mesmo formato de saida dos
- * outros geradores) num vetor de strings ordenado, pronto pra busca
- * binaria. Preenche *out_n com a quantidade lida (0 em caso de erro,
- * junto com retorno NULL). */
 static char **gerador_carregar_validos(const char *caminho, size_t *out_n) {
     FILE *f = fopen(caminho, "r");
     if (f == NULL) {
@@ -331,7 +253,7 @@ static char **gerador_carregar_validos(const char *caminho, size_t *out_n) {
     }
 
     char linha[256];
-    /* descarta o cabecalho ("numero"); arquivo vazio => sem registros */
+
     if (fgets(linha, sizeof linha, f) == NULL) {
         fclose(f);
         *out_n = 0;
@@ -345,7 +267,7 @@ static char **gerador_carregar_validos(const char *caminho, size_t *out_n) {
         if (n == cap) {
             cap *= 2;
             char **novo = realloc(vet, cap * sizeof *vet);
-            if (novo == NULL) break; /* segue com o que deu pra carregar */
+            if (novo == NULL) break;
             vet = novo;
         }
         vet[n] = str_duplicar(linha);
@@ -368,18 +290,6 @@ static void gerador_liberar_validos(char **vet, size_t n) {
     free(vet);
 }
 
-/*
- * Gera "n" numeros no formato HHHHH-AA-FFFFF que NAO aparecem em
- * caminho_registro_valido — o pior caso de busca (Secao 5 da
- * proposta): consultar algo que nao existe precisa varrer o bucket
- * inteiro sem achar nada.
- *
- * Estrategia: carrega o registro valido inteiro em memoria e ordena
- * (O(m log m)), depois sorteia candidatos e confere cada um com busca
- * binaria (O(log m)) ate juntar "n" que nao colidam com o registro.
- * Cada candidato tem um limite de tentativas pra nao entrar em loop
- * infinito se "n" for maior que o espaco de chaves livre.
- */
 int gerador_consultas_falsas(const char *caminho_registro_valido,
                               const char *caminho_saida,
                               size_t n) {
