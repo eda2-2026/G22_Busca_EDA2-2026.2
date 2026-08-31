@@ -22,16 +22,21 @@ Produtos falsificados ou importados irregularmente frequentemente exibem número
 
 > **Pré-requisitos:** `gcc` e `make` — nada além da biblioteca padrão de C. No **Windows com MinGW**, use `mingw32-make` no lugar de `make`.
 
-**Compilar tudo** (gera os executáveis em `bin/`):
+**Passo a passo** (a ordem importa — o passo 1 compila os binários que os outros usam):
 
 ```
-make                 # Linux / macOS   (mingw32-make no Windows)
+make              # 1. compila TODOS os binarios em bin/
+make test         # 2. testes  -> "RESULTADO: SUCESSO" + "rehashing preservou..."
+make benchmark    # 3. mede baseline x Fibonacci -> resultados/colisoes.csv
+make painel       # 4. mostra o resumo do experimento no terminal
 ```
 
-**Rodar os testes automáticos:**
+Verificar números contra o registro real (depois do passo 1):
 
 ```
-make test            # -> "RESULTADO: SUCESSO" (parse) + "OK: rehashing..." (tabela)
+./bin/verificador --csv dados/registro_real.csv 00003-11-06559 12345-99-00000
+#  00003-11-06559 -> GENUINO   |   12345-99-00000 -> FALSO
+#  (no Windows: .\bin\verificador.exe --csv dados\registro_real.csv ...)
 ```
 
 **Alvos disponíveis:**
@@ -47,20 +52,7 @@ make test            # -> "RESULTADO: SUCESSO" (parse) + "OK: rehashing..." (tab
 | `importar` | driver de importação do CSV bruto da Anatel |
 | `clean` | limpa a pasta `bin/` |
 
-**Exemplos de uso** (no Windows os executáveis têm sufixo `.exe`, ex.: `.\bin\verificador.exe`):
-
-```
-# ver o resumo do experimento (baseline x Fibonacci)
-make benchmark        # gera resultados/colisoes.csv
-make painel           # mostra a tabela e as barras no terminal
-
-# verificar numeros contra o registro real (rode 'make' antes)
-./bin/verificador --csv dados/registro_real.csv 00003-11-06559 12345-99-00000
-#   00003-11-06559 -> GENUINO   |   12345-99-00000 -> FALSO
-
-# gerar o grafico do experimento (requer matplotlib)
-python resultados/gerar_graficos.py
-```
+Para regerar o gráfico do experimento (requer `matplotlib`): `python resultados/gerar_graficos.py`.
 
 ## 3. O que o software faz
 
@@ -163,7 +155,7 @@ O CSV bruto da Anatel tem **189.317 linhas, mas só 87.263 números distintos** 
 
 ![baseline × Fibonacci](resultados/graficos/baseline_vs_fibonacci.png)
 
-**Leitura (honesta):** no **dado real limpo**, baseline e Fibonacci **empatam** — os números de homologação da Anatel *não* têm o agrupamento de baixo nível que a proposta imaginava; o `k mod 2^m` já espalha quase idealmente (os dois ficam perto do hashing aleatório ideal). O ganho do Fibonacci **só aparece quando o dado realmente agrupa**: no cenário adversário o baseline colapsa (usa ~4% dos buckets, 82.143 colisões) e o Fibonacci se mantém perto do ideal (23.516) — ~3,5× menos colisões.
+**Leitura:** no **dado real limpo**, baseline e Fibonacci **empatam** — os números de homologação da Anatel *não* têm o agrupamento de baixo nível que a proposta imaginava; o `k mod 2^m` já espalha quase idealmente (os dois ficam perto do hashing aleatório ideal). O ganho do Fibonacci **só aparece quando o dado realmente agrupa**: no cenário adversário o baseline colapsa (usa ~4% dos buckets, 82.143 colisões) e o Fibonacci se mantém perto do ideal (23.516) — ~3,5× menos colisões.
 
 ### 7.3 Conclusão
 
@@ -212,18 +204,7 @@ G22_Busca_EDA2-2026.2/
 └── docs/
 ```
 
-## 10. Status
-
-- [x] Parse e validação do número (`homolog`) + testes
-- [x] Tabela hash por encadeamento — dinâmica, com fator de carga e **rehashing** + testes
-- [x] Hash **baseline** (`k mod m`) e hash de **Fibonacci** estruturado + testes
-- [x] Verificador GENUÍNO / FALSO / INVÁLIDO
-- [x] Importação e **deduplicação** do dado real da Anatel (87.263 distintos)
-- [x] Benchmark baseline × Fibonacci + gráfico + painel no terminal
-- [ ] Benchmark de **tempo** de busca (extensão)
-- [ ] Vídeo (5 min) e revisão final
-
-## 11. Bibliografia
+## 10. Bibliografia
 
 - Drozdek, A. *Data Structures and Algorithms in C++*, 2ª ed., Brooks/Cole, 2001.
 - Weiss, M. A. *Data Structures and Algorithm Analysis in C++*, 3ª ed., Addison Wesley, 2006.
