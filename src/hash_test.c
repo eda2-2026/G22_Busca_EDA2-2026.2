@@ -4,15 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-/*
- *  teste standalone (nao depende de tabela.h) so pra validar
- * que hash_fib espalha melhor que hash_mod ANTES de plugar na tabela
- * de verdade (Fase 4). Quando a tabela existir, o benchmark.c oficial
- * do projeto assume essa medicao.
- */
-
 #define N_AMOSTRA 10000u
-#define TAM_TABELA 1024u /* potencia de 2, m = 10 */
+#define TAM_TABELA 1024u
 #define M_BITS 10u
 
 static void medir(const char *nome, uint64_t buckets_idx[], size_t n, size_t tam) {
@@ -41,29 +34,23 @@ static void medir(const char *nome, uint64_t buckets_idx[], size_t n, size_t tam
 }
 
 int main(void) {
-    srand(42); /* reproduzivel */
+    srand(42);
 
     uint64_t *idx_mod = malloc(N_AMOSTRA * sizeof *idx_mod);
     uint64_t *idx_fib = malloc(N_AMOSTRA * sizeof *idx_fib);
 
     for (size_t i = 0; i < N_AMOSTRA; i++) {
-        /* Simula o agrupamento real: poucos anos (10) e poucos
-         * fabricantes (20), sequencial denso e crescente — o "pior
-         * caso" que a proposta descreve pra funcao ingenua. */
-        Homolog h;
-        h.seq = (uint32_t)i;               /* denso, sequencial */
-        h.ano = (uint16_t)(i % 10);        /* so 10 anos distintos */
-        h.fab = (uint32_t)((i % 20) * 137); /* so 20 fabricantes */
 
-        /* Baseline (Secao 4.1): k e o numero BRUTO, os 12 digitos
-         * decimais concatenados (HHHHH-AA-FFFFF -> HHHHHAAFFFFF),
-         * sem nenhuma mistura — e por isso que a estrutura "vaza". */
+        Homolog h;
+        h.seq = (uint32_t)i;
+        h.ano = (uint16_t)(i % 10);
+        h.fab = (uint32_t)((i % 20) * 137);
+
         uint64_t k_bruto = (uint64_t)h.seq * 10000000ULL
                           + (uint64_t)h.ano * 100000ULL
                           + (uint64_t)h.fab;
         idx_mod[i] = hash_mod(k_bruto, TAM_TABELA);
 
-        /* Melhorada (Secao 4.2): mistura estruturada + Fibonacci. */
         uint64_t k_estruturada = chave_estruturada(h);
         idx_fib[i] = hash_fib(k_estruturada, M_BITS);
     }

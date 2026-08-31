@@ -1,17 +1,6 @@
 #include "gerador.h"
 #include <stdio.h>
 
-/*
- * Driver do importador do dado real.
- *
- * Le o CSV bruto baixado do Portal de Dados Abertos da Anatel e escreve
- * o registro no formato do projeto (header "numero", uma chave
- * HHHHH-AA-FFFFF por linha), pronto pra ser lido pelo verificador e
- * pelo benchmark.
- *
- *   uso: importar <csv_bruto> [csv_saida]
- *   csv_saida padrao: dados/registro_real.csv
- */
 int main(int argc, char **argv) {
     if (argc < 2) {
         fprintf(stderr,

@@ -2,18 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-/*
- * Testes do modulo homolog (parse/format).
- *
- * Cada assercao imprime [ok] ou [FALHOU] e incrementa os contadores.
- * O programa devolve 0 se tudo passou e 1 se houve qualquer falha,
- * para servir tanto ao alvo "make test" quanto a uma futura CI.
- */
-
 static int total  = 0;
 static int falhas = 0;
 
-/* Espera que o parse de `s` TENHA SUCESSO e que os campos batam. */
 static void espera_valido(const char *rotulo, const char *s,
                           uint32_t seq, uint16_t ano, uint32_t fab) {
     total++;
@@ -35,7 +26,6 @@ static void espera_valido(const char *rotulo, const char *s,
            rotulo, s, h.seq, h.ano, h.fab);
 }
 
-/* Espera que o parse de `s` FALHE (formato invalido). */
 static void espera_invalido(const char *rotulo, const char *s) {
     total++;
     const char *disp = s ? s : "(NULL)";
@@ -49,7 +39,6 @@ static void espera_invalido(const char *rotulo, const char *s) {
     printf("  [ok]     %-16s \"%s\" rejeitado como esperado\n", rotulo, disp);
 }
 
-/* Espera que parse -> format devolva exatamente a string original. */
 static void espera_roundtrip(const char *s) {
     total++;
     Homolog h;

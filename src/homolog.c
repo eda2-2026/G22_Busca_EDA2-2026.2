@@ -3,8 +3,6 @@
 #include <string.h>
 #include <ctype.h>
 
-/* Lê exatamente n dígitos a partir de s e monta o valor inteiro.
- * Retorna false se algum caractere não for dígito. */
 static bool le_digitos(const char *s, int n, uint32_t *out) {
     uint32_t v = 0;
     for (int i = 0; i < n; i++) {
@@ -16,7 +14,7 @@ static bool le_digitos(const char *s, int n, uint32_t *out) {
 }
 
 bool homolog_parse(const char *s, Homolog *out) {
-    /* Formato: 5 dígitos, '-', 2 dígitos, '-', 5 dígitos = 14 caracteres. */
+
     if (s == NULL || out == NULL) return false;
     if (strlen(s) != 14) return false;
     if (s[5] != '-' || s[8] != '-') return false;

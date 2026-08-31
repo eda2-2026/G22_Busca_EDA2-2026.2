@@ -18,7 +18,7 @@ int main(void) {
     printf("capacidade final: %zu (inicial era %u)\n", t->capacidade, CAPACIDADE_INICIAL);
     printf("total inserido: %zu\n", t->total);
     printf("fator de carga final: %.3f\n", tabela_fator_carga(t));
-    assert(t->capacidade > CAPACIDADE_INICIAL); /* cresceu pelo menos uma vez */
+    assert(t->capacidade > CAPACIDADE_INICIAL);
     assert(t->total == N_INSERCOES);
 
     size_t achados = 0;
