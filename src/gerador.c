@@ -214,6 +214,9 @@ static int gerador_normalizar(const char *campo, char *saida) {
     return 1;
 }
 
+/* definida mais abaixo (usada tambem por consultas_falsas) */
+static int gerador_cmp_str(const void *a, const void *b);
+
 /*
  * Le a amostra bruta baixada do Portal de Dados Abertos e produz um
  * CSV no mesmo formato usado por gerador_sintetico (header "numero",
@@ -257,20 +260,38 @@ int gerador_importar_real(const char *caminho_entrada, const char *caminho_saida
     }
     fprintf(out, "numero\n");
 
-    size_t validos = 0, descartados = 0;
+    /* Coleta os numeros validos; o registro e um CONJUNTO, entao no fim
+     * ordenamos e escrevemos apenas os distintos (o CSV bruto da Anatel
+     * repete o mesmo numero em varias linhas — um log de certificacoes). */
+    size_t cap = 1024, nv = 0, descartados = 0;
+    char **vals = malloc(cap * sizeof *vals);
+    if (vals == NULL) { fclose(in); fclose(out); return -1; }
     while (fgets(linha, sizeof linha, in) != NULL) {
         char *campo = gerador_campo_indice(linha, sep, idx_numero);
         if (campo != NULL) campo = gerador_aparar(campo);
 
         char numero[GERADOR_NUMERO_LEN];
-        if (!gerador_normalizar(campo, numero)) {
-            descartados++;
-            continue;
-        }
+        if (!gerador_normalizar(campo, numero)) { descartados++; continue; }
 
-        fprintf(out, "%s\n", numero);
-        validos++;
+        if (nv == cap) {
+            cap *= 2;
+            char **tmp = realloc(vals, cap * sizeof *vals);
+            if (tmp == NULL) break;
+            vals = tmp;
+        }
+        vals[nv] = str_duplicar(numero);
+        if (vals[nv] == NULL) break;
+        nv++;
     }
+
+    qsort(vals, nv, sizeof *vals, gerador_cmp_str);
+    size_t validos = 0, duplicados = 0;
+    for (size_t i = 0; i < nv; i++) {
+        if (i > 0 && strcmp(vals[i], vals[i-1]) == 0) duplicados++;
+        else { fprintf(out, "%s\n", vals[i]); validos++; }
+    }
+    for (size_t i = 0; i < nv; i++) free(vals[i]);
+    free(vals);
 
     fclose(in);
     if (fclose(out) != 0) {
@@ -278,8 +299,8 @@ int gerador_importar_real(const char *caminho_entrada, const char *caminho_saida
         return -1;
     }
 
-    fprintf(stderr, "gerador_importar_real: %zu validos, %zu descartados (linha fora do formato)\n",
-            validos, descartados);
+    fprintf(stderr, "gerador_importar_real: %zu numeros distintos, %zu duplicados removidos, %zu descartados\n",
+            validos, duplicados, descartados);
     return 0;
 }
 
