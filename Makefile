@@ -26,8 +26,8 @@ BENCH := $(BIN)/benchmark$(EXE)
 
 .PHONY: all test cli verificar importar painel benchmark gerador clean
 
-# Alvo padrao: compila e roda TODOS os testes automaticos.
-all: test
+# 'make' sem argumento compila todos os binarios em bin/.
+all: $(TEST) $(TTEST) $(CLI) $(VER) $(IMP) $(PAIN) $(BENCH)
 
 # ---- Testes automaticos ----
 $(TEST): $(SRC)/homolog_test.c $(SRC)/homolog.c $(SRC)/homolog.h | $(BIN)

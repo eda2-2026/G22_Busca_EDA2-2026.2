@@ -4,24 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
- * Benchmark do experimento (baseline x Fibonacci).
- *
- * Mede colisoes e maior bucket de duas funcoes de hash:
- *   BASELINE  : numero bruto concatenado, h(k) = k mod m (hash_mod);
- *   FIBONACCI : chave estruturada + multiplicative-shift (hash_fib);
- * em dois cenarios:
- *   real       : registro real da Anatel, ja deduplicado;
- *   adversario : dados agrupados de proposito (poucos anos/fabricantes,
- *                sequencial denso) — o pior caso da funcao ingenua.
- *
- * Ambos rodam na mesma capacidade de tabela (potencia de 2, fator de
- * carga ~0,7). Escreve resultados/colisoes.csv, lido por
- * gerar_graficos.py e pelo painel.
- *
- * Uso: benchmark [registro_real.csv]
- */
-
 static uint64_t chave_bruta(Homolog h) {
     return (uint64_t)h.seq * 10000000ULL + (uint64_t)h.ano * 100000ULL + (uint64_t)h.fab;
 }
@@ -84,7 +66,7 @@ int main(int argc, char **argv) {
     for (size_t ti=0; ti<sizeof(tamanhos)/sizeof(tamanhos[0]); ti++) {
         size_t n = tamanhos[ti];
         if (n>nreal) n=nreal;
-        /* real: amostra espalhada (o registro esta ordenado) */
+
         for (size_t i=0;i<n;i++) sub[i] = real[(size_t)((double)i*nreal/n)];
         gerar_adversario(adv, n);
         for (int fib=0; fib<2; fib++) {

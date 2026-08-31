@@ -4,21 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/*
- * Verificador de Homologacao Anatel.
- *
- * Monta a tabela hash (dinamica, hash de Fibonacci — modulo do Esdras)
- * a partir de um registro de numeros validos e responde, por consulta:
- *
- *   GENUINO   -> numero bem formado E presente no registro
- *   FALSO     -> numero bem formado, mas ausente do registro
- *   INVALIDO  -> nem esta no formato HHHHH-AA-FFFFF
- *
- * Uso:
- *   verificador [--demo | --csv ARQUIVO] [numeros...]
- *   sem numeros -> modo interativo ; sem fonte -> registro DEMO embutido.
- */
-
 static const char *DEMO[] = {
     "03340-19-04952", "01234-20-00042", "99999-21-12345",
     "05000-18-04952", "00001-22-00001",
@@ -95,11 +80,10 @@ int main(int argc, char **argv) {
 
     size_t cap = proxima_pot2(n * 10 / 7 + 1);
     if (cap < 16) cap = 16;
-    Tabela *t = tabela_criar(cap);          /* tabela dinamica + Fibonacci (Esdras) */
+    Tabela *t = tabela_criar(cap);
     if (t == NULL) { fprintf(stderr, "erro: sem memoria para a tabela\n"); free(reg); return 1; }
     for (size_t i = 0; i < n; i++) tabela_inserir(t, reg[i]);
 
-    /* estatisticas do estado atual (a tabela pode ter crescido via rehashing) */
     size_t ocupados = 0, maior = 0;
     for (size_t i = 0; i < t->capacidade; i++) {
         size_t len = 0;

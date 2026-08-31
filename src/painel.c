@@ -2,13 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
- * Painel de resultados no terminal.
- * Le resultados/colisoes.csv e mostra baseline (k mod m) x Fibonacci nos
- * cenarios real e adversario, na base completa. Rode: make painel.
- * NO_COLOR=1 no ambiente desliga as cores.
- */
-
 #ifdef _WIN32
 #include <windows.h>
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
