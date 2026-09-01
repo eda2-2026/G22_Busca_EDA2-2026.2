@@ -203,8 +203,11 @@ G22_Busca_EDA2-2026.2/
 │   └── graficos/                  # PNGs gerados (baseline_vs_fibonacci.png)
 └── docs/
 ```
+## 10. Vídeo de apresentação
 
-## 10. Bibliografia
+[![Assista nossa apresentação no YouTube](https://img.youtube.com/vi/ifjD-_IkMQc/maxresdefault.jpg)](https://www.youtube.com/watch?v=ifjD-_IkMQc)
+
+## 11. Bibliografia
 
 - Drozdek, A. *Data Structures and Algorithms in C++*, 2ª ed., Brooks/Cole, 2001.
 - Weiss, M. A. *Data Structures and Algorithm Analysis in C++*, 3ª ed., Addison Wesley, 2006.
